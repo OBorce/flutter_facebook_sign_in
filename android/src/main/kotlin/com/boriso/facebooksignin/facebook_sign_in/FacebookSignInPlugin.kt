@@ -8,7 +8,9 @@ package com.boriso.facebooksignin.facebook_sign_in
 
 import android.content.Intent
 import androidx.annotation.NonNull
-import com.facebook.*
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -34,11 +36,9 @@ class FacebookSignInPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, Pl
      */
     private val resultQueue: BlockingDeque<Result> = LinkedBlockingDeque(1)
     private var callbackManager = CallbackManager.Factory.create()
-
     private var binding: ActivityPluginBinding? = null
 
     init {
-
         LoginManager.getInstance().registerCallback(callbackManager,
                 object : FacebookCallback<LoginResult> {
                     override fun onSuccess(loginResult: LoginResult) {
@@ -65,7 +65,8 @@ class FacebookSignInPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, Pl
                         val result = resultQueue.pop()
                         result.error("exception", "Exception while executing the operation", exception.message)
                     }
-                })
+                }
+        )
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
@@ -91,7 +92,6 @@ class FacebookSignInPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, Pl
         fun registerWith(registrar: Registrar) {
             val channel = MethodChannel(registrar.messenger(), ChannelName)
             channel.setMethodCallHandler(FacebookSignInPlugin())
-            throw Exception("foo")
         }
 
         const val ChannelName = "facebook_sign_in"
@@ -107,7 +107,7 @@ class FacebookSignInPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, Pl
                         resultQueue.put(result)
                         LoginManager.getInstance().logIn(binding?.activity, permissions)
                     }
-                    ?: result.error("No permissions", "", "")
+                    ?: result.error("missing_permissions", "No permissions", "")
             "sign_out" -> resultQueue.put(result)
                     .also { LoginManager.getInstance().logOut() }
                     .also { resultQueue.pop() }
@@ -116,11 +116,11 @@ class FacebookSignInPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, Pl
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        throw Exception("detached")
+        LoginManager.getInstance().unregisterCallback(callbackManager)
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        this.binding = binding;
+        this.binding = binding
         binding.addActivityResultListener(this)
     }
 
